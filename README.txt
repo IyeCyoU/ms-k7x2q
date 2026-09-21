@@ -59,6 +59,14 @@ Reading the colours
   and below is green. Income and savings above average are green. The average
   is your last three full months, scaled to the days counted.
 
+Appearance
+  The paintbrush button at the top opens Appearance. Pick a template (Ledger,
+  Ocean, Amethyst, Graphite, Sand, Rose or Mono), set your own accent and panel
+  colours, choose the heading style, spacing and corners, or switch to a
+  blue-and-orange palette for better and worse figures that is easier if you
+  have colour-blind vision. Colours are adjusted so text stays readable.
+  Your choices are saved on each device separately.
+
 Saving PDFs
   Reports > Save this report as PDF, or Save full summary as PDF. The PDF is
   built inside the app, so it does not depend on the browser's print dialog.
