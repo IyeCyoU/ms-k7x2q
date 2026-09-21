@@ -65,6 +65,22 @@ Plan file (keeping two devices in step)
   forecast settings, exchange rates, one-off marks and Needs/Wants choices. It never
   contains your Moneydance export. You can protect it with a password.
 
+Planning (Plan tab)
+  Budget: every category from your chart of accounts has a row. Type your monthly amount, or leave it
+  blank to use the average of the last three full months (an amount of 0 means plan to spend nothing).
+  Open a category to set amounts for single accounts. Add planning lines for things Moneydance has no
+  category for. Plan versions start from a month, so changing October never rewrites January.
+  Repeating: add commitments (rent, insurance, loan instalments, salary changes) with a category,
+  amount, how often, and start and end dates. Mark one "already in my averages" to avoid counting it
+  twice. Payments found in your history can be turned into commitments in one tap.
+  Goals: status, priority and type, an emergency-fund helper, and the room left after your plan.
+  Outlook: Base, Lean and Stretch scenarios (editable percentages for income, needs, wants, savings,
+  debt and asset purchases) and a month-by-month forecast for every category, up to 24 months.
+
+Back and forward
+  Arrow buttons at the top of every page, and Alt+Left / Alt+Right. Category and transaction details
+  are steps too, and have their own arrows.
+
 Month-end close (Reports > Month-end close)
   A checklist per month: the export covers it, everything balances, exchange rates and budget
   are in place, and two boxes for your own checks. Close the month to keep a snapshot. If a
