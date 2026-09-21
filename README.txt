@@ -59,6 +59,33 @@ Reading the colours
   and below is green. Income and savings above average are green. The average
   is your last three full months, scaled to the days counted.
 
+Plan file (keeping two devices in step)
+  Data > Plan file > Save plan file. On iPhone choose Save to Files and pick iCloud
+  Drive. On the other device choose Load plan file. The file holds budgets, goals,
+  forecast settings, exchange rates, one-off marks and Needs/Wants choices. It never
+  contains your Moneydance export. You can protect it with a password.
+
+Month-end close (Reports > Month-end close)
+  A checklist per month: the export covers it, everything balances, exchange rates and budget
+  are in place, and two boxes for your own checks. Close the month to keep a snapshot. If a
+  later import changes a closed month, the app says exactly what moved and warns you before
+  you replace your data. It records the change; it does not stop you.
+
+Other tools
+  Search: press Ctrl+K or Command+K (or the magnifier button) to jump to pages, accounts,
+  categories and transactions.
+  Transaction > Category: change how one transaction is categorised in this app only.
+  Data > Category changes: move a whole category into another.
+  Spending: donut chart of the mix and a list of top payees.
+  Plan > Outlook > Edit: 12 or 24 month forecast and your own scenario percentages.
+  Data > Check against Moneydance: type Moneydance's figures and see if they agree.
+  Data > Needs and wants: decide which categories count as which.
+  Transaction > Mark as one-off: leaves it out of averages and forecasts.
+  Plan > Repeating: see detected regular payments and price rises.
+  Plan > Debt: payoff date and interest saved with extra payments.
+  Accounts > Where your money sits: currency and asset mix.
+  Reports > Save year in review as PDF.
+
 Appearance
   The paintbrush button at the top opens Appearance. Pick a template (Ledger,
   Ocean, Amethyst, Graphite, Sand, Rose or Mono), set your own accent and panel
