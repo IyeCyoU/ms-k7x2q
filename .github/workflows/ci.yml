@@ -30,6 +30,8 @@ jobs:
         timeout-minutes: 4
         run: npx playwright install chromium
       - run: npm test
+      - name: Check every page, button and box (desktop and phone)
+        run: npm run check:app
 
   deploy:
     # Only main is published, and only after every test passes.

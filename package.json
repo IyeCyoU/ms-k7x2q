@@ -3,7 +3,8 @@
   "private": true,
   "description": "Money status: offline-first PWA for Moneydance exports.",
   "scripts": {
-    "test": "node --test --test-concurrency=1 tests/*.test.mjs"
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "check:app": "node tests/tools/crawl.mjs"
   },
   "devDependencies": {
     "playwright": "1.63.0"

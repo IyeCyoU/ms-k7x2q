@@ -20,6 +20,8 @@ npm ci && npx playwright install chromium && npm test
 - `tests/offline.test.mjs`: the files the app needs exist and are cached, it works offline, and the update prompt appears.
 - `tests/backup.test.mjs`: the backup is encrypted, refuses wrong passwords, and survives a full wipe and restore.
 - `tests/budget.test.mjs`: Plan › Budget edits keep your place, amounts with commas work, and every toolbar option (fill, clear, planning lines, bulk edit, versions) does what it says.
+- `tests/amounts.test.mjs`: every money box in a dialog saves what was typed, including `1,250` and `1250,50`.
+- `tests/tools/crawl.mjs` (`npm run check:app`): opens every page, tab and report on desktop and phone sizes, presses every kind of button, opens every dialog and edits every kind of box; fails on any error, lost cursor, collapsing section, sideways scrolling or dialog that will not close.
 - `tests/security.test.mjs`: the security policy blocks sending data to other servers, the app never trips it, and the passcode lock works.
 
 If you change the maths on purpose, update the golden value in `money.test.mjs`.
