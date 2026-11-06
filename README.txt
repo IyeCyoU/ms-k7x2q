@@ -52,7 +52,9 @@ MacBook (macOS Monterey)
 
 Updating later
   Replace index.html in the repository with the newer one (Add file > Upload
-  files, same name). Open the app twice to load the new version.
+  files, same name). Also change the version line at the top of sw.js
+  (const V='money-status-...') to any new value. Next time you open the app
+  it shows "A new version is ready. Reload". Tap Reload.
 
 Reading the colours
   Green is better for you, red is worse. Spending above your average is red
