@@ -88,3 +88,10 @@ test('save, wipe, restore through the UI brings everything back', async () => {
   assert.ok(await page.evaluate(() => S.plan.goals.some(g => g.id === 'g-test')));
   assert.deepEqual(app.errors, []);
 });
+
+test('backup card is the first card after the data summary on the Data page', async () => {
+  const { page } = app;
+  await page.evaluate(() => { S.page = 'data'; render(); });
+  const order = await page.evaluate(() => [...document.querySelectorAll('#view h2')].map(h => h.textContent));
+  assert.equal(order.indexOf('Full backup'), 2, order.join(' | ')); // after "Current data" and "Checks"
+});
