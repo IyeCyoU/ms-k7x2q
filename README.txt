@@ -9,7 +9,9 @@ What this is
   stays on your device.
 
 Files
-  index.html            the app
+  index.html            the app page
+  css/                  the app's look
+  js/                   the app's program, in parts (01-engine ... 10-shell)
   manifest.webmanifest  tells iPhone/Android how to install it
   sw.js                 lets it open offline
   icons/                app icons
@@ -21,7 +23,8 @@ Publish it free on GitHub Pages (recommended, no card needed)
      Choose Public (free Pages needs a public repository). Click Create.
   3. On the new repository page click "uploading an existing file".
   4. Unzip this package, open the money-status folder, select EVERYTHING
-     inside it (index.html, manifest.webmanifest, sw.js and the icons folder)
+     inside it (index.html, manifest.webmanifest, sw.js and the css, js and
+     icons folders)
      and drag it into the browser window. Wait for the upload to finish.
   5. Click "Commit changes".
   6. Open Settings > Pages. Under "Build and deployment" set Source to
@@ -62,6 +65,13 @@ Reading the colours
   Green is better for you, red is worse. Spending above your average is red
   and below is green. Income and savings above average are green. The average
   is your last three full months, scaled to the days counted.
+
+Full backup (protects you if the browser clears its storage)
+  Data > Full backup > Save backup. One encrypted file with everything on this
+  device: your export, import history, plan and settings. A password of at
+  least 8 characters is required and cannot be recovered. Keep the file in
+  iCloud Drive. To restore: Data > Full backup > Restore backup, or "Restore a
+  backup" on the first screen of a fresh device. Make one after each import.
 
 Plan file (keeping two devices in step)
   Data > Plan file > Save plan file. On iPhone choose Save to Files and pick iCloud
