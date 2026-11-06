@@ -25,3 +25,9 @@ test('every page renders with sample data and no errors', async () => {
   }
   assert.deepEqual(app.errors, []);
 });
+
+test('the stylesheet is applied (tests run against the real layout)', async () => {
+  const bg = await app.page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  assert.notEqual(bg, 'rgba(0, 0, 0, 0)', 'body has no background: css/app.css did not load');
+  assert.notEqual(await app.page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()), '', 'theme colours missing');
+});

@@ -422,6 +422,8 @@ table.fx tr.fx-t th,table.fx tr.fx-t td{font-weight:700;border-top:2px solid var
  .pt-row>div:not(:first-child){text-align:left;display:flex;justify-content:space-between;align-items:center;gap:8px}
  .pt-row>div:not(:first-child)::before{content:attr(data-l);color:var(--muted);font-size:12.5px}
  .pt-row .pt-name{grid-column:1/-1}
+ .pt-row>div[data-l="Variance"]{grid-column:1/-1}
+ .pt-row>div:not(:first-child)>*{min-width:0}
  .pt-arow{grid-template-columns:repeat(2,minmax(0,1fr))}
  .pt-arow>div:not(:first-child){display:flex;justify-content:space-between;gap:8px;text-align:left}
  .pt-arow>div:not(:first-child)::before{content:attr(data-l);color:var(--muted);font-size:12.5px}

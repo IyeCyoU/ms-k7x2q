@@ -106,3 +106,19 @@ test('removing the version you are editing goes back to one that exists', async 
   assert.doesNotMatch(await page.evaluate(() => document.getElementById('bv-sel').selectedOptions[0].textContent), /\(new\)/);
   assert.deepEqual(app.errors, []);
 });
+
+test('on a phone, nothing in a budget row overlaps', async () => {
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.evaluate(() => { const v = ensureEditVersion(); v.amounts['Needs › Food'] = 1500; render(); });
+  const overlaps = await page.evaluate(() => {
+    const bad = [];
+    for (const row of document.querySelectorAll('#ptab .pt-row')) {
+      const cells = [...row.children].filter(c => c.dataset.l).map(c => ({ l: c.dataset.l, r: c.getBoundingClientRect(), kids: [...c.children].map(k => k.getBoundingClientRect()) }));
+      for (const a of cells) for (const b of cells) if (a !== b) for (const k of a.kids)
+        if (k.width && k.left < b.r.right - 1 && k.right > b.r.left + 1 && k.top < b.r.bottom - 1 && k.bottom > b.r.top + 1) bad.push(a.l + ' over ' + b.l);
+    }
+    return [...new Set(bad)];
+  });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  assert.deepEqual(overlaps, []);
+});

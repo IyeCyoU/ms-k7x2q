@@ -9,7 +9,7 @@ const { chromium } = createRequire(import.meta.url)('playwright');
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.webmanifest': 'application/manifest+json', '.png': 'image/png' };
+const TYPES = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png' };
 
 /** Serve a directory over http (service workers need http, not file://). */
 export function serve(dir = ROOT) {

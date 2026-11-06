@@ -24,13 +24,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Install test browser, retrying if it hangs
-        run: |
-          for i in 1 2 3; do
-            timeout 180 npx playwright install --with-deps chromium && exit 0
-            echo "Attempt $i failed or hung, retrying"
-          done
-          exit 1
+      # No --with-deps: that installs optional fonts from a slow mirror and hung several runs.
+      # GitHub's runners already ship Chrome, so the libraries Chromium needs are there.
+      - name: Install test browser
+        timeout-minutes: 4
+        run: npx playwright install chromium
       - run: npm test
 
   deploy:
