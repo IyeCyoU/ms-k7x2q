@@ -51,10 +51,12 @@ MacBook (macOS Monterey)
   Safari on Monterey cannot add a site to the Dock as an app.
 
 Updating later
-  Replace index.html in the repository with the newer one (Add file > Upload
-  files, same name). Also change the version line at the top of sw.js
-  (const V='money-status-...') to any new value. Next time you open the app
-  it shows "A new version is ready. Reload". Tap Reload.
+  Automatic (recommended, one-time setup):
+    Settings > Pages > Build and deployment > Source: choose "GitHub Actions".
+    From then on, every change to main is tested first and published only if
+    all tests pass. The version is stamped automatically, and the app shows
+    "A new version is ready. Reload". You don't need to edit sw.js.
+  Check progress or failures in the repository's Actions tab.
 
 Reading the colours
   Green is better for you, red is worse. Spending above your average is red
