@@ -3,6 +3,16 @@
    Engine: Moneydance tab-delimited export -> ledger, balances
    ============================================================ */
 const sum=(a,f=x=>x)=>a.reduce((s,x)=>s+f(x),0);
+/* Amounts as people type them: "1500", "1,500", "1 500", "1500.5", "1500,5", "1.500,50". null if not a number. */
+function parseAmount(t){
+  let s=String(t??'').trim().replace(/[\s  ']/g,'');
+  if(!s)return null;
+  const c=s.lastIndexOf(','),d=s.lastIndexOf('.');
+  if(c>-1&&d>-1)s=c>d?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');   // both: the last one is the decimal mark
+  else if(c>-1)s=/^-?\d{1,3}(,\d{3})+$/.test(s)?s.replace(/,/g,''):s.replace(',','.'); // "1,500" thousands, "12,5" decimal
+  if(!/^-?\d*\.?\d+$/.test(s))return null;
+  const n=Number(s);return Number.isFinite(n)?n:null;
+}
 const iso=d=>d.toISOString().slice(0,10);
 const D=s=>new Date(s+'T12:00:00Z');
 const addMonths=(d,n)=>{const a=D(d);a.setUTCDate(1);a.setUTCMonth(a.getUTCMonth()+n);return iso(a)};

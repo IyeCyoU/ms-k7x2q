@@ -76,10 +76,10 @@ function reconcileCard(){
   return`<p class="sub">Type in what Moneydance shows and see whether this app agrees. Use the same currency Moneydance reports in${base?' (your export’s base currency is '+esc(base)+')':''}. Fill in only what you want to check.</p>
    <div class="form-grid"><label class="fld"><span>Currency</span><select id="rc-cur">${cs.map(c=>`<option ${c===base?'selected':''}>${esc(c)}</option>`).join('')}</select></label>
    <label class="fld"><span>Net worth as of</span><input id="rc-date" type="date" value="${ix.latest}"></label>
-   <label class="fld"><span>Net worth in Moneydance</span><input id="rc-nw" type="number" step="any" inputmode="decimal"></label>
+   <label class="fld"><span>Net worth in Moneydance</span><input id="rc-nw" type="text" inputmode="decimal" autocomplete="off" data-num step="any"></label>
    <label class="fld"><span>Month to compare</span><select id="rc-month">${months.map(m=>`<option value="${m}" ${m===sel?'selected':''}>${esc(fmonLong(m+'-01'))}</option>`).join('')}</select></label>
-   <label class="fld"><span>Income that month</span><input id="rc-inc" type="number" step="any" inputmode="decimal"></label>
-   <label class="fld"><span>Spending that month</span><input id="rc-sp" type="number" step="any" inputmode="decimal"></label></div>
+   <label class="fld"><span>Income that month</span><input id="rc-inc" type="text" inputmode="decimal" autocomplete="off" data-num step="any"></label>
+   <label class="fld"><span>Spending that month</span><input id="rc-sp" type="text" inputmode="decimal" autocomplete="off" data-num step="any"></label></div>
    <div style="margin-top:12px"><button class="btn primary small" id="rc-go">Compare</button></div><div id="rc-out"></div>`;
 }
 function bindReconcile(){
@@ -321,9 +321,9 @@ function pDebt(){
 }
 function editLoan(l){
   const cfg=S.plan.loans[l.id]||{};
-  modal('Terms for '+l.name,`<div class="form-grid"><label class="fld"><span>Interest rate (% a year)</span><input id="ln-apr" type="number" min="0" step="any" value="${cfg.apr??''}"></label>
-   <label class="fld"><span>Monthly payment (${esc(l.cur)})</span><input id="ln-pay" type="number" min="0" step="any" value="${cfg.payment??''}" placeholder="${l.detected?Math.round(l.detected):''}"></label>
-   <label class="fld"><span>Extra each month (${esc(l.cur)})</span><input id="ln-extra" type="number" min="0" step="any" value="${cfg.extra??''}"></label></div>
+  modal('Terms for '+l.name,`<div class="form-grid"><label class="fld"><span>Interest rate (% a year)</span><input id="ln-apr" type="text" inputmode="decimal" autocomplete="off" data-num min="0" step="any" value="${cfg.apr??''}"></label>
+   <label class="fld"><span>Monthly payment (${esc(l.cur)})</span><input id="ln-pay" type="text" inputmode="decimal" autocomplete="off" data-num min="0" step="any" value="${cfg.payment??''}" placeholder="${l.detected?Math.round(l.detected):''}"></label>
+   <label class="fld"><span>Extra each month (${esc(l.cur)})</span><input id="ln-extra" type="text" inputmode="decimal" autocomplete="off" data-num min="0" step="any" value="${cfg.extra??''}"></label></div>
    <p class="footnote">Leave the payment empty to use what your history shows${l.detected?' (about '+fmtIn(l.detected,l.cur,0)+')':''}. Interest is assumed to be charged monthly.</p>`,
    [{label:'Clear',run:()=>{delete S.plan.loans[l.id];savePlan();$('modal').close();render()}},{label:'Cancel',run:()=>$('modal').close()},{label:'Save',primary:true,run:()=>{
      const g=id=>{const v=$(id).value.trim();return v===''?null:+v},apr=g('ln-apr'),pay=g('ln-pay'),ex=g('ln-extra');
