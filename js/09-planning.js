@@ -276,6 +276,29 @@ function addEvent(fc,cur){
 }
 
 /* ---- budget: one line per category ---- */
+/* Amounts as people type them: "1500", "1,500", "1 500", "1500.5", "1500,5", "1.500,50". null if not a number. */
+function parseAmount(t){
+  let s=String(t??'').trim().replace(/[\s  ']/g,'');
+  if(!s)return null;
+  const c=s.lastIndexOf(','),d=s.lastIndexOf('.');
+  if(c>-1&&d>-1)s=c>d?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');   // both: the last one is the decimal mark
+  else if(c>-1)s=/^-?\d{1,3}(,\d{3})+$/.test(s)?s.replace(/,/g,''):s.replace(',','.'); // "1,500" thousands, "12,5" decimal
+  if(!/^-?\d*\.?\d+$/.test(s))return null;
+  const n=Number(s);return Number.isFinite(n)?n:null;
+}
+/* Redraw after an edit without losing your place: the box you moved to, open account lists, and scroll. */
+function rerenderKeepingPlace(){
+  setTimeout(()=>{   // wait until Tab or a tap has moved focus to the next box
+    const FOC='#ptab input,#ptab select,#ptab button,#ptab summary',a=document.activeElement,bm=a&&a.dataset?a.dataset.bm:null,sel=bm!=null;
+    const idx=a&&a!==document.body?[...document.querySelectorAll(FOC)].indexOf(a):-1;   // anything else you tabbed to
+    const open=[...document.querySelectorAll('#ptab details[open][data-acc]')].map(d=>d.dataset.acc),y=window.scrollY;
+    render();
+    for(const k of open){const d=document.querySelector(`#ptab details[data-acc="${CSS.escape(k)}"]`);if(d)d.open=true}
+    window.scrollTo(0,y);
+    const n=bm!=null?document.querySelector(`#ptab [data-bm="${CSS.escape(bm)}"]`):idx>-1?document.querySelectorAll(FOC)[idx]:null;
+    if(n){n.focus({preventScroll:true});if(sel)try{n.setSelectionRange(0,n.value.length)}catch(e){}}
+  },0);
+}
 function pBudget(){
   const ix=S.ix,mkNow=ix.latest.slice(0,7),editKey=editVersionKey(),verExists=S.plan.budgets.find(v=>v.from===editKey),PM=planModel(verExists?editKey:null);
   const vcur=(verExists&&verExists.cur)||(S.plan.budgets.length?S.plan.budgets.at(-1).cur:S.cur),to=v=>{const x=fromBase(v,vcur);return x===null?0:x};
@@ -290,10 +313,10 @@ function pBudget(){
   };
   const row=l=>{
     const act=PM.ytdA[l.key]||0,plan=l.planned,yp=plan*ytdM,vr=l.cls==='inc'?act-yp:yp-act,s=stat(l,plan,act);
-    const acc=l.acc.length>1||(l.acc.length===1&&l.acc[0].name!==l.name)?`<details class="pt-acc"><summary>${l.acc.length} account${l.acc.length===1?'':'s'}</summary>${l.acc.map(a=>{const aa=PM.ytdA['@'+a.id]||0;return`<div class="pt-arow"><div class="pt-name">${a.code?`<span class="code">${esc(a.code)}</span>`:''}${esc(a.name)}</div><div data-l="Average/mo">${fmtIn(to(a.trailing),vcur,0)}</div><div data-l="Your amount"><input class="num-in" type="number" min="0" step="any" data-bm="@${esc(a.id)}" value="${a.manual!==null?Math.round(to(a.manual)*100)/100:''}" placeholder="${Math.round(to(a.trailing))}" aria-label="Monthly amount for ${esc(a.name)}"></div><div data-l="YTD actual">${fmtIn(to(aa),vcur,0)}</div></div>`}).join('')}<p class="footnote">Account amounts are used when the category has no amount of its own.</p></details>`:'';
+    const acc=l.acc.length>1||(l.acc.length===1&&l.acc[0].name!==l.name)?`<details class="pt-acc" data-acc="${esc(l.key)}"><summary>${l.acc.length} account${l.acc.length===1?'':'s'}</summary>${l.acc.map(a=>{const aa=PM.ytdA['@'+a.id]||0;return`<div class="pt-arow"><div class="pt-name">${a.code?`<span class="code">${esc(a.code)}</span>`:''}${esc(a.name)}</div><div data-l="Average/mo">${fmtIn(to(a.trailing),vcur,0)}</div><div data-l="Your amount"><input class="num-in" type="text" inputmode="decimal" autocomplete="off" data-bm="@${esc(a.id)}" value="${a.manual!==null?Math.round(to(a.manual)*100)/100:''}" placeholder="${Math.round(to(a.trailing))}" aria-label="Monthly amount for ${esc(a.name)}"></div><div data-l="YTD actual">${fmtIn(to(aa),vcur,0)}</div></div>`}).join('')}<p class="footnote">Account amounts are used when the category has no amount of its own.</p></details>`:'';
     return`<div class="pt-row"><div class="pt-name"><strong>${esc(l.name)}</strong>${l.custom?` <button class="btn small" data-rmline="${esc(l.key)}" aria-label="Remove ${esc(l.name)}">Remove</button>`:''}${acc}</div>
      <div data-l="Average/mo">${fmtIn(to(l.trailing),vcur,0)}</div>
-     <div data-l="Your amount"><input class="num-in" type="number" min="0" step="any" data-bm="${esc(l.key)}" value="${l.manual!==null?Math.round(to(l.manual)*100)/100:''}" placeholder="${Math.round(to(l.trailing))}" aria-label="Monthly amount for ${esc(l.name)}"></div>
+     <div data-l="Your amount"><input class="num-in" type="text" inputmode="decimal" autocomplete="off" data-bm="${esc(l.key)}" value="${l.manual!==null?Math.round(to(l.manual)*100)/100:''}" placeholder="${Math.round(to(l.trailing))}" aria-label="Monthly amount for ${esc(l.name)}"></div>
      <div data-l="Plan/mo"><strong>${fmtIn(to(plan),vcur,0)}</strong>${l.basis==='average'?'':`<small class="muted"> ${l.basis}</small>`}</div>
      <div data-l="Plan/year">${fmtIn(to(plan)*12,vcur,0)}</div>
      <div data-l="YTD actual">${ytdM?fmtIn(to(act),vcur,0):'—'}</div>
@@ -319,16 +342,22 @@ function pBudget(){
   <div id="bp-period"></div>`;
   document.querySelectorAll('[data-bm]').forEach(inp=>inp.onchange=()=>{
     const v=ensureEditVersion(),key=inp.dataset.bm,val=inp.value.trim();
-    if(val==='')delete v.amounts[key];else{const n=+val;if(!Number.isFinite(n)||n<0){toast('Use zero or a positive amount.');render();return}v.amounts[key]=n}
-    savePlan();render();
+    if(val==='')delete v.amounts[key];else{const n=parseAmount(val);if(n===null||n<0){toast('Use zero or a positive amount.');rerenderKeepingPlace();return}v.amounts[key]=n}
+    if(key.startsWith('@')&&val!==''){
+      // An account amount only counts when its category has no amount of its own, so hand the category over to its accounts.
+      const l=PM.lines.find(l=>l.acc.some(a=>'@'+a.id===key));
+      if(l&&v.amounts[l.key]!==undefined){delete v.amounts[l.key];toast(l.name+' now adds up its accounts instead of your category amount.')}
+    }
+    savePlan();rerenderKeepingPlace();
   });
+  document.querySelectorAll('[data-bm]').forEach(inp=>inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();inp.blur()}});
   $('edit-budget').onclick=editBudget;
   $('bv-sel').onchange=e=>{S.plan.bfrom=e.target.value;render()};
   $('bv-new').onclick=()=>modal('New plan version',`<label class="fld"><span>Starts in</span><select id="nv-from">${monthOptions(mkNow,monthStart(ix.earliest),addMonths(monthStart(ix.latest),12))}</select></label><p class="footnote">It starts as a copy of the version before it. Earlier months keep the amounts they had.</p>`,[{label:'Cancel',run:()=>$('modal').close()},{label:'Create',primary:true,run:()=>{S.plan.bfrom=$('nv-from').value;ensureEditVersion();savePlan();$('modal').close();render()}}]);
-  $('bp-fill').onclick=()=>{const v=ensureEditVersion();let n=0;for(const l of PM.lines)if(!l.custom&&l.manual===null&&l.trailing>0){const x=fromBase(l.trailing,v.cur);if(x!==null){v.amounts[l.key]=Math.round(x);n++}}savePlan();render();toast(n?'Filled '+n+' line'+(n===1?'':'s')+' from the average.':'Nothing to fill.')};
+  $('bp-fill').onclick=()=>{const v=ensureEditVersion();let n=0;for(const l of PM.lines)if(!l.custom&&l.manual===null&&l.basis!=='accounts'&&l.trailing>0){const x=fromBase(l.trailing,v.cur);if(x!==null){v.amounts[l.key]=Math.round(x);n++}}savePlan();render();toast(n?'Filled '+n+' line'+(n===1?'':'s')+' from the average.':'Nothing to fill.')};
   $('bp-scale').onclick=()=>modal('Change all your amounts',`<label class="fld"><span>Change by (percent, minus for a cut)</span><input id="sc-p" type="number" step="any" value="5"></label><p class="footnote">Only amounts you typed change. Lines using the average are left alone.</p>`,[{label:'Cancel',run:()=>$('modal').close()},{label:'Apply',primary:true,run:()=>{const p=+$('sc-p').value;if(!Number.isFinite(p)||p<-90||p>500){toast('Enter a number from -90 to 500.');return}const v=ensureEditVersion();for(const k in v.amounts)v.amounts[k]=Math.round(v.amounts[k]*(1+p/100)*100)/100;savePlan();$('modal').close();render()}}]);
-  $('bp-clear').onclick=()=>modal('Clear your amounts?','<p>Every amount you typed in this version is removed, so the plan goes back to the averages.</p>',[{label:'Cancel',run:()=>$('modal').close()},{label:'Clear',primary:true,run:()=>{const v=ensureEditVersion();v.amounts={};savePlan();$('modal').close();render()}}]);
-  $('bp-line').onclick=()=>modal('Add a planning line',`<div class="form-grid"><label class="fld"><span>Name</span><input id="pl-name" type="text" maxlength="50" placeholder="Car service, school fees"></label><label class="fld"><span>Counts as</span><select id="pl-cls"><option value="needs">A need</option><option value="wants">A want</option><option value="other">Other spending</option></select></label><label class="fld"><span>Monthly amount (${esc(vcur)})</span><input id="pl-amt" type="number" min="0" step="any"></label></div><p class="footnote">For something you plan to spend on that has no category in Moneydance yet.</p>`,[{label:'Cancel',run:()=>$('modal').close()},{label:'Add',primary:true,run:()=>{const name=$('pl-name').value.trim(),amt=+$('pl-amt').value;if(!name||!Number.isFinite(amt)||amt<0){toast('Enter a name and an amount.');return}const key='+'+name;if((S.plan.customLines||[]).some(c=>c.key===key)){toast('That line already exists.');return}(S.plan.customLines??=[]).push({key,name,cls:$('pl-cls').value});ensureEditVersion().amounts[key]=amt;savePlan();$('modal').close();render()}}]);
+  $('bp-clear').onclick=()=>modal('Clear your amounts?','<p>Every amount you typed in this version is removed, so the plan goes back to the averages. Your own planning lines keep their amounts.</p>',[{label:'Cancel',run:()=>$('modal').close()},{label:'Clear',primary:true,run:()=>{const v=ensureEditVersion();for(const k of Object.keys(v.amounts))if(!k.startsWith('+'))delete v.amounts[k];savePlan();$('modal').close();render()}}]);
+  $('bp-line').onclick=()=>modal('Add a planning line',`<div class="form-grid"><label class="fld"><span>Name</span><input id="pl-name" type="text" maxlength="50" placeholder="Car service, school fees"></label><label class="fld"><span>Counts as</span><select id="pl-cls"><option value="needs">A need</option><option value="wants">A want</option><option value="other">Other spending</option></select></label><label class="fld"><span>Monthly amount (${esc(vcur)})</span><input id="pl-amt" type="text" inputmode="decimal" autocomplete="off"></label></div><p class="footnote">For something you plan to spend on that has no category in Moneydance yet.</p>`,[{label:'Cancel',run:()=>$('modal').close()},{label:'Add',primary:true,run:()=>{const name=$('pl-name').value.trim(),amt=parseAmount($('pl-amt').value);if(!name||amt===null||amt<0){toast('Enter a name and an amount.');return}const key='+'+name;if((S.plan.customLines||[]).some(c=>c.key===key)){toast('That line already exists.');return}(S.plan.customLines??=[]).push({key,name,cls:$('pl-cls').value});ensureEditVersion().amounts[key]=amt;savePlan();$('modal').close();render()}}]);
   document.querySelectorAll('[data-rmline]').forEach(b=>b.onclick=()=>{const k=b.dataset.rmline;S.plan.customLines=(S.plan.customLines||[]).filter(c=>c.key!==k);for(const v of S.plan.budgets)delete v.amounts[k];savePlan();render()});
   pBudgetPeriod();
 }
