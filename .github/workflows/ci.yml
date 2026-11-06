@@ -44,7 +44,7 @@ jobs:
       - name: Build site (app files only, new cache version per release)
         run: |
           mkdir _site
-          cp -r index.html sw.js manifest.webmanifest icons _site/
+          cp -r index.html sw.js manifest.webmanifest css js icons _site/
           V="money-status-$(date -u +%Y%m%d)-${GITHUB_SHA::7}"
           sed -i "s/^const V='[^']*';/const V='$V';/" _site/sw.js
           grep -q "const V='$V';" _site/sw.js

@@ -8,12 +8,14 @@ import { ROOT, serve, openApp } from './helpers.mjs';
 
 test('every file referenced by sw.js, the manifest and index.html exists', () => {
   const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8');
-  const listed = [...sw.matchAll(/'([^']+\.(?:html|webmanifest|png))'/g)].map(m => m[1]);
+  const listed = [...sw.matchAll(/'([^']+\.(?:html|webmanifest|png|css|js))'/g)].map(m => m[1]);
   const man = JSON.parse(fs.readFileSync(path.join(ROOT, 'manifest.webmanifest'), 'utf8'));
   const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
-  const fromHtml = [...html.matchAll(/href="(icons\/[^"]+)"/g)].map(m => m[1]);
+  const fromHtml = [...html.matchAll(/(?:href|src)="((?:icons|css|js)\/[^"]+)"/g)].map(m => m[1]);
+  // Every script and stylesheet the page loads must be cached for offline use.
+  for (const f of fromHtml.filter(f => !f.startsWith('icons/'))) assert.ok(listed.includes(f), `sw.js does not cache ${f}`);
   const all = [...new Set([...listed, ...man.icons.map(i => i.src), ...fromHtml])];
-  assert.ok(all.length >= 6);
+  assert.ok(all.length >= 17, `only ${all.length} files found`);
   for (const f of all) assert.ok(fs.existsSync(path.join(ROOT, f)), `missing file: ${f}`);
   assert.match(sw, /const V='[^']+'/, 'sw.js must define a cache version V');
 });
@@ -27,7 +29,7 @@ test('works offline and offers a new version', async () => {
     const { page, context } = app;
     await page.evaluate(() => navigator.serviceWorker.ready);
     const cached = await page.evaluate(async () => { const k = await caches.keys(); return (await (await caches.open(k[0])).keys()).length; });
-    assert.ok(cached >= 7, `only ${cached} files cached`);
+    assert.ok(cached >= 19, `only ${cached} files cached`);
 
     await page.reload();
     await context.setOffline(true);
