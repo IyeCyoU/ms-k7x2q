@@ -63,6 +63,13 @@ Reading the colours
   and below is green. Income and savings above average are green. The average
   is your last three full months, scaled to the days counted.
 
+Full backup (protects you if the browser clears its storage)
+  Data > Full backup > Save backup. One encrypted file with everything on this
+  device: your export, import history, plan and settings. A password of at
+  least 8 characters is required and cannot be recovered. Keep the file in
+  iCloud Drive. To restore: Data > Full backup > Restore backup, or "Restore a
+  backup" on the first screen of a fresh device. Make one after each import.
+
 Plan file (keeping two devices in step)
   Data > Plan file > Save plan file. On iPhone choose Save to Files and pick iCloud
   Drive. On the other device choose Load plan file. The file holds budgets, goals,

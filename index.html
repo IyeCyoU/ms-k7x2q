@@ -764,7 +764,7 @@ const S={page:'overview',data:null,ix:null,meta:null,raw:'',cur:'',per:null,q:''
 let S_layoutDefault=null;
 const store={
   get(){try{return JSON.parse(localStorage.getItem('money-status.settings')||'{}')}catch(e){return{}}},
-  set(){try{localStorage.setItem('money-status.settings',JSON.stringify({cur:S.cur,theme:S.theme,targets:S.targets,mask:S.mask,autoLock:S.autoLock,look:S.look,layout:S.layout}))}catch(e){}},
+  set(){try{localStorage.setItem('money-status.settings',JSON.stringify({cur:S.cur,theme:S.theme,targets:S.targets,mask:S.mask,autoLock:S.autoLock,look:S.look,layout:S.layout,lastBackup:S.lastBackup||null}))}catch(e){}},
   lock(){try{return JSON.parse(localStorage.getItem('money-status.lock')||'null')}catch(e){return null}},
   setLock(r){if(r)localStorage.setItem('money-status.lock',JSON.stringify(r));else localStorage.removeItem('money-status.lock')}
 };
@@ -1097,10 +1097,10 @@ const txRow=t=>{
 function catName(l){return NW.test(l.main)?(l.level2||l.label):l.main}
 
 function vWelcome(){
-  $('view').innerHTML=`<div class="drop" id="drop"><strong>Bring in your Moneydance export</strong><p>Choose the tab-delimited text file you exported from Moneydance. It is read in this browser and stays on this device.</p><div class="actions"><button class="btn primary" id="w-import">Choose export file</button><button class="btn" id="w-sample">Try with sample data</button></div><p class="sub" style="margin-top:14px">You can also drop the file anywhere on this page.</p></div>
+  $('view').innerHTML=`<div class="drop" id="drop"><strong>Bring in your Moneydance export</strong><p>Choose the tab-delimited text file you exported from Moneydance. It is read in this browser and stays on this device.</p><div class="actions"><button class="btn primary" id="w-import">Choose export file</button><button class="btn" id="w-sample">Try with sample data</button><button class="btn" id="bk-load">Restore a backup</button></div><input type="file" id="bk-file" accept=".json,application/json" hidden><p class="sub" style="margin-top:14px">You can also drop the file anywhere on this page.</p></div>
   <section class="card block"><h2>Getting your data out of Moneydance</h2><ol class="steps" style="margin-top:12px"><li><b>Open File → Export</b> in Moneydance and choose the tab-delimited text format.</li><li><b>Include every account.</b> A file with only some accounts gives incomplete net worth and totals.</li><li><b>Save the file, then choose it here.</b> Next time, import a fresh export to replace the old one.</li></ol></section>`;
   $('w-import').onclick=()=>$('file').click();
-  $('w-sample').onclick=loadSample;
+  $('w-sample').onclick=loadSample;bindBackup();
 }
 function loadSample(){
   try{const text=sampleText(),p=parseTXT(text,'Sample data.txt');if(p.errors.length)throw new Error(p.errors[0]);applyParsed(p,text,undefined,true);S.page='overview';render();toast('Sample data loaded. Import your own export whenever you are ready.')}catch(e){toast('Could not build the sample: '+e.message)}
@@ -1507,6 +1507,7 @@ function vData(){
   <section class="card block"><div class="head"><div><h2>Historical exchange rates</h2></div></div>${fxCard()}</section>
   <section class="card block"><div class="head"><div><h2>Needs and wants</h2></div></div>${classCard()}</section>
   <section class="card block"><div class="head"><div><h2>Category changes</h2></div></div>${overridesCard()}</section>
+  <section class="card block" id="backup-card"><div class="head"><div><h2>Full backup</h2></div></div>${backupCard()}</section>
   <section class="card block"><div class="head"><div><h2>Plan file: keep devices in step</h2></div></div>${planFileCard()}</section>
   <section class="card block"><div class="head"><div><h2>Privacy and security</h2><p class="sub">Everything stays on this device. A passcode also encrypts what is saved here.</p></div></div>
    <label style="display:flex;gap:8px;align-items:center;margin-bottom:14px"><input type="checkbox" id="s-mask" ${S.mask?'checked':''}> Hide amounts on screen</label>
@@ -1523,7 +1524,7 @@ function vData(){
   $('d-forget').onclick=()=>modal('Remove saved data?','<p>This deletes the export, history and plan saved in this browser. Your Moneydance file is not touched, and you can import it again any time.</p>',[{label:'Cancel',run:()=>$('modal').close()},{label:'Remove',primary:true,run:async()=>{try{await DB.clear()}catch(e){}S.data=null;S.ix=null;S.meta=null;S.raw='';S.hist=[];S.plan=defaultPlan();$('modal').close();S.page='overview';render();toast('Saved data removed.')}}]);
   if($('show-errors'))$('show-errors').onclick=()=>modal('Transactions left out',`<div class="list">${ix.errors.slice(0,200).map(x=>`<div class="row"><div><span class="t">${esc(x.description||'(no description)')}</span><small>${esc(fdate(x.date))} · ${esc(x.reason)}</small></div></div>`).join('')}</div>`);
   document.querySelectorAll('[data-restore]').forEach(b=>b.onclick=()=>restoreHistory(+b.dataset.restore));
-  bindReconcile();bindClassCard();bindPlanFile();bindOverrides();
+  bindReconcile();bindClassCard();bindPlanFile();bindBackup();bindOverrides();
   document.querySelectorAll('[data-fxpaste]').forEach(b=>b.onclick=()=>pasteRates(b.dataset.fxpaste));
   $('s-mask').onchange=e=>{S.mask=e.target.checked;store.set();render()};
   if($('s-set'))$('s-set').onclick=async()=>{const a=$('pc1').value,b=$('pc2').value;if(a.length<6){toast('Use at least 6 characters.');return}if(a!==b){toast('The two passcodes do not match.');return}try{await setPasscode(a);toast('Passcode set. Saved data is now encrypted.');render()}catch(e){toast('Could not set the passcode: '+e.message)}};
@@ -2233,6 +2234,87 @@ function bindPlanFile(){
   $('pf-save').onclick=savePlanDialog;
   $('pf-load').onclick=()=>$('plan-file').click();
   $('plan-file').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{loadPlanText(await f.text())}catch(err){toast('That file could not be read.')}};
+}
+
+/* ---- full backup: export + import history + plan + settings, always encrypted ---- */
+const BACKUP_MIN_PW=8;
+async function backupPayload(){
+  const saved=await DB.get('export'),hist=(await DB.get('history'))||[];
+  return{app:'money-status',kind:'backup',v:1,savedAt:new Date().toISOString(),
+    export:saved?{filename:saved.filename,importedAt:saved.importedAt,text:saved.text??await unpack(saved.payload)}:null,
+    history:await Promise.all(hist.map(async h=>({filename:h.filename,importedAt:h.importedAt,accounts:h.accounts,txCount:h.txCount,latest:h.latest,text:await unpack(h.payload)}))),
+    plan:S.plan,settings:store.get()};
+}
+async function buildBackupFile(password){
+  if(!password||password.length<BACKUP_MIN_PW)throw new Error('Use a password of at least '+BACKUP_MIN_PW+' characters.');
+  const text=JSON.stringify(await backupPayload()),salt=crypto.getRandomValues(new Uint8Array(16)),key=await CR.derive(password,salt),o=await CR.enc(key,text);
+  return JSON.stringify({app:'money-status',kind:'backup',v:1,enc:true,salt:b64(salt),iv:b64(o.iv),ct:b64(o.ct)});
+}
+async function readBackupFile(text,password){
+  let obj;try{obj=JSON.parse(text)}catch(e){throw new Error('That file could not be read.')}
+  if(!obj||obj.app!=='money-status'||obj.kind!=='backup'||!obj.enc)throw new Error(obj&&obj.kind==='plan'?'This is a plan file. Use Load plan file instead.':'This is not a Money status backup.');
+  let p;try{const key=await CR.derive(password,unb64(obj.salt));p=JSON.parse(await CR.dec(key,{iv:unb64(obj.iv),ct:unb64(obj.ct)}))}
+  catch(e){throw new Error('That password did not open the backup.')}
+  if(p.export){const t=parseTXT(p.export.text,p.export.filename);if(t.errors.length)throw new Error('The export inside this backup is damaged: '+t.errors[0])}
+  return p;
+}
+async function restoreBackup(p){
+  const out={plan:await pack(JSON.stringify(mergePlan(p.plan||{}))),
+    history:await Promise.all((p.history||[]).map(async h=>({filename:h.filename,importedAt:h.importedAt,accounts:h.accounts,txCount:h.txCount,latest:h.latest,payload:await pack(h.text)})))};
+  if(p.export)out.export={filename:p.export.filename,importedAt:p.export.importedAt,payload:await pack(p.export.text)};
+  else await DB.del('export');
+  await DB.putMany(out);
+  const st=p.settings||{};
+  if(st.cur)S.cur=st.cur;if(st.theme)S.theme=st.theme;if(st.targets)S.targets={...S.targets,...st.targets};if(st.look){S.look={...defaultLook(),...st.look};applyLook()}
+  if(typeof st.mask==='boolean')S.mask=st.mask;if(st.layout)S.layout=st.layout;
+  S.data=null;S.ix=null;S.meta=null;
+  await loadAll();store.set();
+  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+}
+function backupAge(){if(!S.lastBackup)return null;return Math.floor((Date.now()-Date.parse(S.lastBackup))/864e5)}
+function backupCard(){
+  const age=backupAge(),has=!!(S.data&&!S.meta?.sample);
+  const status=age===null?(has?notice('You have no backup yet. If this browser clears its storage, your data and plan are gone.'):''):
+    `<p class="sub">Last backup on this device: <strong>${esc(new Date(S.lastBackup).toLocaleDateString('en-GB'))}</strong>${age>0?` (${age} day${age===1?'':'s'} ago)`:' (today)'}.</p>${age>30&&has?notice('Your last backup is over a month old.'):''}`;
+  return`${status}<p class="sub">One encrypted file with everything on this device: your Moneydance export, import history, plan, budgets, goals and settings. Keep it in iCloud Drive. Restoring it brings this device back exactly as it was.</p>
+   <div class="actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button class="btn primary small" id="bk-save" ${has?'':'disabled'}>Save backup</button><button class="btn small" id="bk-load">Restore backup</button></div>
+   <input type="file" id="bk-file" accept=".json,application/json" hidden>
+   <p class="footnote">The backup always needs a password, because it holds your financial data. Without the password it cannot be opened, by anyone.</p>`;
+}
+function bindBackup(){
+  if($('bk-save'))$('bk-save').onclick=()=>{
+    if(!CR.available()){toast('Encryption is not available in this browser, so a backup cannot be made.');return}
+    modal('Save full backup',`<p class="sub">Choose a password for this backup. Write it down: there is no way to recover it.</p>
+     <label class="fld"><span>Password (at least ${BACKUP_MIN_PW} characters)</span><input id="bk-pass" type="password" autocomplete="new-password"></label>
+     <label class="fld"><span>Type it again</span><input id="bk-pass2" type="password" autocomplete="new-password"></label><p class="footnote" id="bk-err" style="color:var(--red)"></p>`,
+     [{label:'Cancel',run:()=>$('modal').close()},{label:'Save backup',primary:true,run:async()=>{
+       const pw=$('bk-pass').value;
+       if(pw.length<BACKUP_MIN_PW){$('bk-err').textContent='Use at least '+BACKUP_MIN_PW+' characters.';return}
+       if(pw!==$('bk-pass2').value){$('bk-err').textContent='The two passwords are different.';return}
+       try{const text=await buildBackupFile(pw),d=new Date().toISOString().slice(0,10);$('modal').close();
+         await saveFile(new Blob([text],{type:'application/json'}),'Money-status-backup-'+d+'.json','backup');
+         S.lastBackup=new Date().toISOString();store.set();if(S.page==='data')render()}
+       catch(e){$('bk-err').textContent='The backup could not be made: '+e.message}
+     }}]);
+  };
+  if(!$('bk-load'))return;
+  $('bk-load').onclick=()=>$('bk-file').click();
+  $('bk-file').onchange=async e=>{
+    const f=e.target.files[0];e.target.value='';if(!f)return;
+    let text;try{text=await f.text()}catch(err){toast('That file could not be read.');return}
+    modal('Restore backup',`<label class="fld"><span>Backup password</span><input id="br-pass" type="password" autocomplete="off"></label><p class="footnote" id="br-err" style="color:var(--red)"></p>`,
+     [{label:'Cancel',run:()=>$('modal').close()},{label:'Open',primary:true,run:async()=>{
+       let p;try{p=await readBackupFile(text,$('br-pass').value)}catch(err){$('br-err').textContent=err.message;return}
+       const sm=planSummary(p);
+       modal('Replace everything on this device?',`<p>Backup from <strong>${esc(new Date(p.savedAt).toLocaleString('en-GB'))}</strong>.</p>
+        <p class="sub">${p.export?`Export: ${esc(p.export.filename)}, imported ${esc(new Date(p.export.importedAt).toLocaleDateString('en-GB'))}.`:'No export.'} ${(p.history||[]).length} earlier export${(p.history||[]).length===1?'':'s'}, ${sm.budgets} budget version${sm.budgets===1?'':'s'}, ${sm.goals} goal${sm.goals===1?'':'s'}, ${sm.commitments} commitment${sm.commitments===1?'':'s'}.</p>
+        ${S.data&&!S.meta?.sample?notice('Your current data and plan on this device will be replaced. Save a backup of them first if you might need them.'):''}`,
+        [{label:'Cancel',run:()=>$('modal').close()},{label:'Restore',primary:true,run:async()=>{
+          try{await restoreBackup(p);$('modal').close();S.page=S.data?'overview':'data';render();toast('Backup restored.')}
+          catch(err){toast('The backup could not be restored: '+err.message)}
+        }}]);
+     }}]);
+  };
 }
 
 /* ---- currency and asset mix ---- */
@@ -3208,7 +3290,7 @@ let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>
 
 (async function init(){
   const st=store.get();if(st.cur)S.cur=st.cur;if(st.theme)S.theme=st.theme;if(st.targets)S.targets={...S.targets,...st.targets};
-  if(typeof st.mask==='boolean')S.mask=st.mask;if(typeof st.autoLock==='number')S.autoLock=st.autoLock;
+  if(typeof st.mask==='boolean')S.mask=st.mask;if(typeof st.autoLock==='number')S.autoLock=st.autoLock;if(st.lastBackup)S.lastBackup=st.lastBackup;
   S.look={...defaultLook(),...(st.look||{})};if(st.layout&&typeof st.layout==='object')S.layout=st.layout;
   applyTheme();
   if(store.lock()){S.locked=true;$('lock').hidden=false;setTimeout(()=>$('lock-pass').focus(),80);return}
