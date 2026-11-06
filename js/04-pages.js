@@ -430,12 +430,12 @@ function vData(){
     <p class="footnote">Your export is kept only in this browser on this device. A new import shows what was added, changed and removed before it replaces anything.</p></section>
    <section class="card"><div class="head"><h2>Checks</h2></div>${checks.map(([n,st,k,note,act])=>`<div class="check"><div><strong>${n}</strong><p>${note}</p>${act}</div>${pill(st,k)}</div>`).join('')}${extra.map(w=>`<div class="check"><div><p>${esc(w)}</p></div>${pill('Note','warn')}</div>`).join('')}</section>
   </div>
+  <section class="card block" id="backup-card"><div class="head"><div><h2>Full backup</h2></div></div>${backupCard()}</section>
   <section class="card block"><div class="head"><div><h2>Import history</h2><p class="sub">The last three exports you replaced. Restore one if a new export turns out to be wrong.</p></div></div>${hist.length?hist.map((h,i)=>`<div class="row"><div><span class="t">${esc(h.filename)}</span><small>Imported ${esc(new Date(h.importedAt).toLocaleDateString('en-GB'))} · ${h.accounts} accounts · ${h.txCount.toLocaleString()} transactions · through ${esc(fdate(h.latest))}</small></div><div class="amt"><button class="btn small" data-restore="${i}">Restore</button></div></div>`).join(''):'<p class="sub">Nothing yet. Your previous export is kept here the next time you import.</p>'}</section>
   <section class="card block"><div class="head"><div><h2>Check against Moneydance</h2></div></div>${reconcileCard()}</section>
   <section class="card block"><div class="head"><div><h2>Historical exchange rates</h2></div></div>${fxCard()}</section>
   <section class="card block"><div class="head"><div><h2>Needs and wants</h2></div></div>${classCard()}</section>
   <section class="card block"><div class="head"><div><h2>Category changes</h2></div></div>${overridesCard()}</section>
-  <section class="card block" id="backup-card"><div class="head"><div><h2>Full backup</h2></div></div>${backupCard()}</section>
   <section class="card block"><div class="head"><div><h2>Plan file: keep devices in step</h2></div></div>${planFileCard()}</section>
   <section class="card block"><div class="head"><div><h2>Privacy and security</h2><p class="sub">Everything stays on this device. A passcode also encrypts what is saved here.</p></div></div>
    <label style="display:flex;gap:8px;align-items:center;margin-bottom:14px"><input type="checkbox" id="s-mask" ${S.mask?'checked':''}> Hide amounts on screen</label>
