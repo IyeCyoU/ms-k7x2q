@@ -24,7 +24,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - name: Install test browser, retrying if it hangs
+        run: |
+          for i in 1 2 3; do
+            timeout 180 npx playwright install --with-deps chromium && exit 0
+            echo "Attempt $i failed or hung, retrying"
+          done
+          exit 1
       - run: npm test
 
   deploy:
