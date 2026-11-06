@@ -134,7 +134,7 @@ function pBudgetPeriod(){
   <section class="card block"><h2>Budget versions</h2><p class="sub">The version in force for a month is the latest one starting on or before it.</p><div class="list">${versions.map((v,i)=>`<div class="row"><div><span class="t">From ${esc(fmonLong(v.from+'-01'))}</span><small>${Object.keys(v.amounts).length} categories · ${esc(v.cur)} ${fmtIn(sum(Object.values(v.amounts)),v.cur,0)} a month</small></div><div class="amt"><button class="btn small" data-vdel="${esc(v.from)}">Remove</button></div></div>`).join('')}</div></section>`;
   if($('edit-budget-p'))$('edit-budget-p').onclick=editBudget;
   document.querySelectorAll('[data-explain]').forEach(el=>el.onclick=()=>explainCategory(el.dataset.explain,s,e));
-  document.querySelectorAll('[data-vdel]').forEach(el=>el.onclick=()=>modal('Remove this budget version?','<p>Months that used it will fall back to an earlier version, or to no budget.</p>',[{label:'Cancel',run:()=>$('modal').close()},{label:'Remove',primary:true,run:()=>{S.plan.budgets=S.plan.budgets.filter(v=>v.from!==el.dataset.vdel);savePlan();$('modal').close();render()}}]));
+  document.querySelectorAll('[data-vdel]').forEach(el=>el.onclick=()=>modal('Remove this budget version?','<p>Months that used it will fall back to an earlier version, or to no budget.</p>',[{label:'Cancel',run:()=>$('modal').close()},{label:'Remove',primary:true,run:()=>{S.plan.budgets=S.plan.budgets.filter(v=>v.from!==el.dataset.vdel);if(S.plan.bfrom===el.dataset.vdel)S.plan.bfrom=null;savePlan();$('modal').close();render()}}]));
 }
 function explainCategory(key,s,e){
   const ix=S.ix,cap=e>ix.latest?ix.latest:e,a=actual(S.data,s,cap,ix),ls=a.exLines.filter(l=>catKey(l)===key).sort((x,y)=>y.value-x.value);
@@ -147,27 +147,27 @@ function explainCategory(key,s,e){
   S.mv={k:'explain',a:[key]};navCommit();
 }
 function editBudget(){
-  const ix=S.ix,cs=currencies(),now=budgetFor(ix.latest.slice(0,7)),cur0=now?now.v.cur:S.cur;
+  const ix=S.ix,cs=currencies(),ek=editVersionKey(),own=S.plan.budgets.find(v=>v.from===ek),now=own?{v:own}:budgetFor(ek),cur0=now?now.v.cur:S.cur;
   const months=Math.min(12,monthsBetween(ix.earliest,ix.latest)+1);
   const a12=actual(S.data,addMonths(monthStart(ix.latest),-11),ix.latest,ix),tot={};
   for(const l of a12.exLines){const k=catKey(l);tot[k]=(tot[k]||0)+l.value}
   const keys=[...new Set([...Object.keys(tot),...(now?Object.keys(now.v.amounts):[])])].sort((a,b)=>(tot[b]||0)-(tot[a]||0));
   const cur=()=>$('b-cur')?.value||cur0,avg=k=>{const v=fromBase((tot[k]||0)/months,cur(),ix.latest);return v===null?0:v};
   const first=monthStart(ix.earliest),lastM=addMonths(monthStart(ix.latest),12);
-  modal('Budget',`<div class="form-grid"><label class="fld"><span>Applies from</span><select id="b-from">${monthOptions(ix.latest.slice(0,7),first,lastM)}</select></label><label class="fld"><span>Amounts in</span><select id="b-cur">${cs.map(c=>`<option ${c===cur0?'selected':''}>${esc(c)}</option>`).join('')}</select></label></div>
+  modal('Budget',`<div class="form-grid"><label class="fld"><span>Applies from</span><select id="b-from">${monthOptions(ek,first,lastM)}</select></label><label class="fld"><span>Amounts in</span><select id="b-cur">${cs.map(c=>`<option ${c===cur0?'selected':''}>${esc(c)}</option>`).join('')}</select></label></div>
    <p class="sub" style="margin:12px 0">Monthly amounts per category. The right-hand figure is your average over the last ${months} month${months>1?'s':''}.</p>
-   <div class="list" id="b-list">${keys.map(k=>`<div class="row"><div><span class="t">${esc(k)}</span></div><div class="amt"><input class="num-in" type="number" min="0" step="any" data-bk="${esc(k)}" value="${now&&now.v.amounts[k]!=null?now.v.amounts[k]:''}" aria-label="Monthly budget for ${esc(k)}"> <small data-avg="${esc(k)}">avg ${fmtIn(avg(k),cur0,0)}</small></div></div>`).join('')}</div>
+   <div class="list" id="b-list">${keys.map(k=>`<div class="row"><div><span class="t">${esc(k)}</span></div><div class="amt"><input class="num-in" type="text" inputmode="decimal" autocomplete="off" data-bk="${esc(k)}" value="${now&&now.v.amounts[k]!=null?now.v.amounts[k]:''}" aria-label="Monthly budget for ${esc(k)}"> <small data-avg="${esc(k)}">avg ${fmtIn(avg(k),cur0,0)}</small></div></div>`).join('')}</div>
    <button class="btn small" id="b-fill" style="margin-top:10px">Fill blanks with recent averages</button>`,
    [{label:'Cancel',run:()=>$('modal').close()},{label:'Save budget',primary:true,run:()=>{
      const amounts={};let bad=false;
-     document.querySelectorAll('[data-bk]').forEach(el=>{if(el.value==='')return;const v=+el.value;if(!Number.isFinite(v)||v<0)bad=true;else amounts[el.dataset.bk]=v});
+     document.querySelectorAll('[data-bk]').forEach(el=>{if(el.value.trim()==='')return;const v=parseAmount(el.value);if(v===null||v<0)bad=true;else amounts[el.dataset.bk]=v});
      if(bad){toast('Use zero or positive amounts.');return}
      if(!Object.keys(amounts).length){toast('Enter at least one amount.');return}
      const from=$('b-from').value,v={from,cur:$('b-cur').value,amounts};
-     const prevV=S.plan.budgets.find(x=>x.from===from);if(prevV)for(const[k,a]of Object.entries(prevV.amounts))if(/^(@|Income › |\+)/.test(k))amounts[k]=a;
+     const prevV=S.plan.budgets.find(x=>x.from===from)||(now&&now.v),keep=prevV&&prevV.cur===v.cur;if(keep)for(const[k,a]of Object.entries(prevV.amounts))if(/^(@|Income › |\+)/.test(k))amounts[k]=a;
      v.amounts=amounts;
      S.plan.budgets=[...S.plan.budgets.filter(x=>x.from!==from),v].sort((a,b)=>a.from.localeCompare(b.from));
-     savePlan();$('modal').close();S.ptab='budget';render();toast('Budget saved from '+fmonLong(from+'-01')+'.');
+     S.plan.bfrom=from;savePlan();$('modal').close();S.ptab='budget';render();toast('Budget saved from '+fmonLong(from+'-01')+'.');
    }}]);
   $('b-cur').onchange=()=>document.querySelectorAll('[data-avg]').forEach(el=>el.textContent='avg '+fmtIn(avg(el.dataset.avg),cur(),0));
   $('b-fill').onclick=()=>document.querySelectorAll('[data-bk]').forEach(el=>{if(el.value===''&&(tot[el.dataset.bk]||0)>0)el.value=Math.round(avg(el.dataset.bk))});
