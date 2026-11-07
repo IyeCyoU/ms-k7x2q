@@ -45,8 +45,8 @@ test('an open account list stays open after editing another cell', async () => {
 });
 
 test('amounts are read the way people type them', async () => {
-  const r = await page.evaluate(() => ['1500', '1,500', '1 500', '1500.5', '1500,5', '1.500,50', '1,500.25', ' 7 ', '', 'abc', '1,2,3', '-5'].map(t => parseAmount(t)));
-  assert.deepEqual(r, [1500, 1500, 1500, 1500.5, 1500.5, 1500.5, 1500.25, 7, null, null, null, -5]);
+  const r = await page.evaluate(() => ['1500', '1,500', '1 500', '1500.5', '1500,5', '1.500,50', '1,500.25', ' 7 ', '', 'abc', '1,2,3', '-5', '1,00,000', '12,50,000.75'].map(t => parseAmount(t)));
+  assert.deepEqual(r, [1500, 1500, 1500, 1500.5, 1500.5, 1500.5, 1500.25, 7, null, null, null, -5, 100000, 1250000.75]);
 });
 
 test('a bad amount is refused and nothing is saved', async () => {

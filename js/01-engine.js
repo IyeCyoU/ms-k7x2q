@@ -9,7 +9,7 @@ function parseAmount(t){
   if(!s)return null;
   const c=s.lastIndexOf(','),d=s.lastIndexOf('.');
   if(c>-1&&d>-1)s=c>d?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');   // both: the last one is the decimal mark
-  else if(c>-1)s=/^-?\d{1,3}(,\d{3})+$/.test(s)?s.replace(/,/g,''):s.replace(',','.'); // "1,500" thousands, "12,5" decimal
+  else if(c>-1)s=/^-?\d{1,3}(,\d{3})+$/.test(s)||/^-?\d{1,2}(,\d{2})*,\d{3}$/.test(s)?s.replace(/,/g,''):s.replace(',','.'); // "1,500" and lakh "1,00,000" grouping; "12,5" decimal
   if(!/^-?\d*\.?\d+$/.test(s))return null;
   const n=Number(s);return Number.isFinite(n)?n:null;
 }
