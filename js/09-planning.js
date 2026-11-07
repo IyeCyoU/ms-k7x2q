@@ -224,13 +224,13 @@ function pOutlook(){
 function editForecast(){
   const fc=S.plan.fc,cs=currencies(),fcur=fc.cur||S.cur,SC=scenFactors(fc);
   const evRows=()=>fc.events.map((e,i)=>`<div class="row"><div><span class="t">${esc(e.name)}</span><small>${esc(fmonLong(e.month+'-01'))} · ${esc(eventTreat(e))} · ${e.scenario&&e.scenario!=='all'?esc(SC[e.scenario].label):'All scenarios'}${(e.status||'Active')!=='Active'?' · inactive':''}</small></div><div class="amt">${fmtIn(e.amount,e.cur,0)} ${esc(e.cur)} <button class="btn small" data-evdel="${i}">Remove</button></div></div>`).join('')||'<p class="sub">No one-off items yet.</p>';
-  const fld=(k,c,l)=>`<label class="fld"><span>${l}</span><input id="sf-${k}-${c}" type="number" step="any" value="${SC[k].pct[c]}"></label>`;
+  const fld=(k,c,l)=>`<label class="fld"><span>${l}</span><input id="sf-${k}-${c}" type="text" inputmode="decimal" autocomplete="off" data-num step="any" value="${SC[k].pct[c]}"></label>`;
   modal('Forecast assumptions',`
    <div class="form-grid">
     <label class="fld"><span>Currency for the amounts below</span><select id="f-cur">${cs.map(c=>`<option ${c===fcur?'selected':''}>${esc(c)}</option>`).join('')}</select></label>
-    <label class="fld"><span>Minimum cash reserve</span><input id="f-reserve" type="number" min="0" step="any" value="${fc.reserve||''}" placeholder="0"></label>
-    <label class="fld"><span>Total income per month (blank = from your plan)</span><input id="f-inc" type="number" min="0" step="any" value="${fc.income??''}"></label>
-    <label class="fld"><span>Total spending per month (blank = from your plan)</span><input id="f-sp" type="number" min="0" step="any" value="${fc.spend??''}"></label>
+    <label class="fld"><span>Minimum cash reserve</span><input id="f-reserve" type="text" inputmode="decimal" autocomplete="off" data-num min="0" step="any" value="${fc.reserve||''}" placeholder="0"></label>
+    <label class="fld"><span>Total income per month (blank = from your plan)</span><input id="f-inc" type="text" inputmode="decimal" autocomplete="off" data-num min="0" step="any" value="${fc.income??''}"></label>
+    <label class="fld"><span>Total spending per month (blank = from your plan)</span><input id="f-sp" type="text" inputmode="decimal" autocomplete="off" data-num min="0" step="any" value="${fc.spend??''}"></label>
     <label class="fld"><span>Forecast length</span><select id="f-h"><option value="12" ${fc.horizon!==24?'selected':''}>12 months</option><option value="24" ${fc.horizon===24?'selected':''}>24 months</option></select></label>
    </div>
    <label style="display:flex;gap:8px;align-items:center;margin:14px 0"><input type="checkbox" id="f-count" ${fc.countIncome?'checked':''}> Count expected income in “safe to spend”</label>
@@ -260,7 +260,7 @@ function addEvent(fc,cur){
     <label class="fld"><span>Name</span><input id="e-name" type="text" maxlength="60" placeholder="Bonus, car service, flights"></label>
     <label class="fld"><span>Month</span><select id="e-month">${monthOptions(L.slice(0,7),monthStart(L),addMonths(monthStart(L),24))}</select></label>
     <label class="fld"><span>Direction</span><select id="e-dir"><option value="-1">Money out</option><option value="1">Money in</option></select></label>
-    <label class="fld"><span>Amount</span><input id="e-amt" type="number" min="0" step="any"></label>
+    <label class="fld"><span>Amount</span><input id="e-amt" type="text" inputmode="decimal" autocomplete="off" data-num min="0" step="any"></label>
     <label class="fld"><span>Currency</span><select id="e-cur">${cs.map(c=>`<option ${c===cur?'selected':''}>${esc(c)}</option>`).join('')}</select></label>
     <label class="fld"><span>What it is</span><select id="e-treat">${TREATS.map(t=>`<option>${t}</option>`).join('')}</select></label>
     <label class="fld"><span>Applies to</span><select id="e-scen"><option value="all">All scenarios</option>${Object.entries(SC).map(([k,v])=>`<option value="${k}">${v.label} only</option>`).join('')}</select></label>
@@ -276,29 +276,8 @@ function addEvent(fc,cur){
 }
 
 /* ---- budget: one line per category ---- */
-/* Amounts as people type them: "1500", "1,500", "1 500", "1500.5", "1500,5", "1.500,50". null if not a number. */
-function parseAmount(t){
-  let s=String(t??'').trim().replace(/[\s  ']/g,'');
-  if(!s)return null;
-  const c=s.lastIndexOf(','),d=s.lastIndexOf('.');
-  if(c>-1&&d>-1)s=c>d?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');   // both: the last one is the decimal mark
-  else if(c>-1)s=/^-?\d{1,3}(,\d{3})+$/.test(s)?s.replace(/,/g,''):s.replace(',','.'); // "1,500" thousands, "12,5" decimal
-  if(!/^-?\d*\.?\d+$/.test(s))return null;
-  const n=Number(s);return Number.isFinite(n)?n:null;
-}
-/* Redraw after an edit without losing your place: the box you moved to, open account lists, and scroll. */
-function rerenderKeepingPlace(){
-  setTimeout(()=>{   // wait until Tab or a tap has moved focus to the next box
-    const FOC='#ptab input,#ptab select,#ptab button,#ptab summary',a=document.activeElement,bm=a&&a.dataset?a.dataset.bm:null,sel=bm!=null;
-    const idx=a&&a!==document.body?[...document.querySelectorAll(FOC)].indexOf(a):-1;   // anything else you tabbed to
-    const open=[...document.querySelectorAll('#ptab details[open][data-acc]')].map(d=>d.dataset.acc),y=window.scrollY;
-    render();
-    for(const k of open){const d=document.querySelector(`#ptab details[data-acc="${CSS.escape(k)}"]`);if(d)d.open=true}
-    window.scrollTo(0,y);
-    const n=bm!=null?document.querySelector(`#ptab [data-bm="${CSS.escape(bm)}"]`):idx>-1?document.querySelectorAll(FOC)[idx]:null;
-    if(n){n.focus({preventScroll:true});if(sel)try{n.setSelectionRange(0,n.value.length)}catch(e){}}
-  },0);
-}
+/* The page-wide render() keeps your place (cursor, open lists); see js/10-shell.js. */
+const rerenderKeepingPlace=()=>render();
 function pBudget(){
   const ix=S.ix,mkNow=ix.latest.slice(0,7),editKey=editVersionKey(),verExists=S.plan.budgets.find(v=>v.from===editKey),PM=planModel(verExists?editKey:null);
   const vcur=(verExists&&verExists.cur)||(S.plan.budgets.length?S.plan.budgets.at(-1).cur:S.cur),to=v=>{const x=fromBase(v,vcur);return x===null?0:x};
@@ -355,7 +334,7 @@ function pBudget(){
   $('bv-sel').onchange=e=>{S.plan.bfrom=e.target.value;render()};
   $('bv-new').onclick=()=>modal('New plan version',`<label class="fld"><span>Starts in</span><select id="nv-from">${monthOptions(mkNow,monthStart(ix.earliest),addMonths(monthStart(ix.latest),12))}</select></label><p class="footnote">It starts as a copy of the version before it. Earlier months keep the amounts they had.</p>`,[{label:'Cancel',run:()=>$('modal').close()},{label:'Create',primary:true,run:()=>{S.plan.bfrom=$('nv-from').value;ensureEditVersion();savePlan();$('modal').close();render()}}]);
   $('bp-fill').onclick=()=>{const v=ensureEditVersion();let n=0;for(const l of PM.lines)if(!l.custom&&l.manual===null&&l.basis!=='accounts'&&l.trailing>0){const x=fromBase(l.trailing,v.cur);if(x!==null){v.amounts[l.key]=Math.round(x);n++}}savePlan();render();toast(n?'Filled '+n+' line'+(n===1?'':'s')+' from the average.':'Nothing to fill.')};
-  $('bp-scale').onclick=()=>modal('Change all your amounts',`<label class="fld"><span>Change by (percent, minus for a cut)</span><input id="sc-p" type="number" step="any" value="5"></label><p class="footnote">Only amounts you typed change. Lines using the average are left alone.</p>`,[{label:'Cancel',run:()=>$('modal').close()},{label:'Apply',primary:true,run:()=>{const p=+$('sc-p').value;if(!Number.isFinite(p)||p<-90||p>500){toast('Enter a number from -90 to 500.');return}const v=ensureEditVersion();for(const k in v.amounts)v.amounts[k]=Math.round(v.amounts[k]*(1+p/100)*100)/100;savePlan();$('modal').close();render()}}]);
+  $('bp-scale').onclick=()=>modal('Change all your amounts',`<label class="fld"><span>Change by (percent, minus for a cut)</span><input id="sc-p" type="text" inputmode="decimal" autocomplete="off" data-num step="any" value="5"></label><p class="footnote">Only amounts you typed change. Lines using the average are left alone.</p>`,[{label:'Cancel',run:()=>$('modal').close()},{label:'Apply',primary:true,run:()=>{const p=+$('sc-p').value;if(!Number.isFinite(p)||p<-90||p>500){toast('Enter a number from -90 to 500.');return}const v=ensureEditVersion();for(const k in v.amounts)v.amounts[k]=Math.round(v.amounts[k]*(1+p/100)*100)/100;savePlan();$('modal').close();render()}}]);
   $('bp-clear').onclick=()=>modal('Clear your amounts?','<p>Every amount you typed in this version is removed, so the plan goes back to the averages. Your own planning lines keep their amounts.</p>',[{label:'Cancel',run:()=>$('modal').close()},{label:'Clear',primary:true,run:()=>{const v=ensureEditVersion();for(const k of Object.keys(v.amounts))if(!k.startsWith('+'))delete v.amounts[k];savePlan();$('modal').close();render()}}]);
   $('bp-line').onclick=()=>modal('Add a planning line',`<div class="form-grid"><label class="fld"><span>Name</span><input id="pl-name" type="text" maxlength="50" placeholder="Car service, school fees"></label><label class="fld"><span>Counts as</span><select id="pl-cls"><option value="needs">A need</option><option value="wants">A want</option><option value="other">Other spending</option></select></label><label class="fld"><span>Monthly amount (${esc(vcur)})</span><input id="pl-amt" type="text" inputmode="decimal" autocomplete="off"></label></div><p class="footnote">For something you plan to spend on that has no category in Moneydance yet.</p>`,[{label:'Cancel',run:()=>$('modal').close()},{label:'Add',primary:true,run:()=>{const name=$('pl-name').value.trim(),amt=parseAmount($('pl-amt').value);if(!name||amt===null||amt<0){toast('Enter a name and an amount.');return}const key='+'+name;if((S.plan.customLines||[]).some(c=>c.key===key)){toast('That line already exists.');return}(S.plan.customLines??=[]).push({key,name,cls:$('pl-cls').value});ensureEditVersion().amounts[key]=amt;savePlan();$('modal').close();render()}}]);
   document.querySelectorAll('[data-rmline]').forEach(b=>b.onclick=()=>{const k=b.dataset.rmline;S.plan.customLines=(S.plan.customLines||[]).filter(c=>c.key!==k);for(const v of S.plan.budgets)delete v.amounts[k];savePlan();render()});
@@ -380,7 +359,7 @@ function pGoals(){
   $('add-goal').onclick=()=>editGoal();
   $('add-emerg').onclick=()=>{
     const cur=S.cur,m6=fromBase(exp,cur)||0;
-    modal('Emergency fund',`<p class="sub">A cushion of some months of planned spending (${esc(cur)} ${fmt(exp)} a month at the moment).</p><div class="form-grid"><label class="fld"><span>Months of spending</span><input id="ef-m" type="number" min="1" max="24" step="1" value="6"></label><label class="fld"><span>Reach it by</span><input id="ef-d" type="date" value="${addMonths(monthStart(L),12)}"></label></div>`,[{label:'Cancel',run:()=>$('modal').close()},{label:'Add goal',primary:true,run:()=>{const n=+$('ef-m').value,d=$('ef-d').value;if(!(n>=1)||!d){toast('Choose months and a date.');return}const tgt=Math.round(m6*n);const t=Math.max(1,monthsBetween(L,d));gs.push({id:'g'+Date.now(),name:'Emergency fund',type:'Emergency fund',priority:'High',status:'Active',target:tgt,cur,current:0,link:'',monthly:Math.round(tgt/t),date:d});savePlan();$('modal').close();render()}}]);
+    modal('Emergency fund',`<p class="sub">A cushion of some months of planned spending (${esc(cur)} ${fmt(exp)} a month at the moment).</p><div class="form-grid"><label class="fld"><span>Months of spending</span><input id="ef-m" type="text" inputmode="decimal" autocomplete="off" data-num min="1" max="24" step="1" value="6"></label><label class="fld"><span>Reach it by</span><input id="ef-d" type="date" value="${addMonths(monthStart(L),12)}"></label></div>`,[{label:'Cancel',run:()=>$('modal').close()},{label:'Add goal',primary:true,run:()=>{const n=+$('ef-m').value,d=$('ef-d').value;if(!(n>=1)||!d){toast('Choose months and a date.');return}const tgt=Math.round(m6*n);const t=Math.max(1,monthsBetween(L,d));gs.push({id:'g'+Date.now(),name:'Emergency fund',type:'Emergency fund',priority:'High',status:'Active',target:tgt,cur,current:0,link:'',monthly:Math.round(tgt/t),date:d});savePlan();$('modal').close();render()}}]);
   };
   document.querySelectorAll('[data-goal]').forEach(el=>el.onclick=()=>editGoal(S.plan.goals.find(g=>g.id===el.dataset.goal)));
 }
@@ -394,11 +373,11 @@ function editGoal(g){
    <label class="fld"><span>Status</span><select id="g-status">${opt(STATUSES,v.status||'Active')}</select></label>
    <label class="fld"><span>Priority</span><select id="g-prio">${opt(PRIOS,v.priority||'Medium')}</select></label>
    <label class="fld"><span>Currency</span><select id="g-cur">${cs.map(c=>`<option ${c===v.cur?'selected':''}>${esc(c)}</option>`).join('')}</select></label>
-   <label class="fld"><span>Target amount</span><input id="g-target" type="number" min="0" step="any" value="${v.target||''}"></label>
+   <label class="fld"><span>Target amount</span><input id="g-target" type="text" inputmode="decimal" autocomplete="off" data-num min="0" step="any" value="${v.target||''}"></label>
    <label class="fld"><span>Target date (optional)</span><input id="g-date" type="date" value="${v.date||''}"></label>
-   <label class="fld"><span>Saved so far (or link an account)</span><input id="g-cur-amt" type="number" min="0" step="any" value="${v.current||''}"></label>
+   <label class="fld"><span>Saved so far (or link an account)</span><input id="g-cur-amt" type="text" inputmode="decimal" autocomplete="off" data-num min="0" step="any" value="${v.current||''}"></label>
    <label class="fld"><span>Link to an account</span><select id="g-link"><option value="">None, use the amount</option>${accts.map(a=>`<option value="${esc(a.id)}" ${v.link===a.id?'selected':''}>${esc(a.label)}</option>`).join('')}</select></label>
-   <label class="fld"><span>You plan to save each month</span><input id="g-monthly" type="number" min="0" step="any" value="${v.monthly||''}"></label></div>`,
+   <label class="fld"><span>You plan to save each month</span><input id="g-monthly" type="text" inputmode="decimal" autocomplete="off" data-num min="0" step="any" value="${v.monthly||''}"></label></div>`,
    [...(g?[{label:'Delete',run:()=>{S.plan.goals=S.plan.goals.filter(x=>x.id!==g.id);savePlan();$('modal').close();render()}}]:[]),{label:'Cancel',run:()=>$('modal').close()},{label:'Save goal',primary:true,run:()=>{
      const n=$('g-name').value.trim(),t=+$('g-target').value,mo=+($('g-monthly').value||0),cu=+($('g-cur-amt').value||0),d=$('g-date').value;
      if(!n||!(t>0)||mo<0||cu<0||![t,mo,cu].every(Number.isFinite)){toast('Add a name and a target above zero.');return}
@@ -420,7 +399,7 @@ function editCommitment(c,prefill){
    <label class="fld"><span>Status</span><select id="cm-status">${opt(STATUSES,v.status)}</select></label>
    <label class="fld"><span>Priority</span><select id="cm-prio">${opt(PRIOS,v.priority||'Medium')}</select></label>
    <label class="fld"><span>Currency</span><select id="cm-cur">${cs.map(x=>`<option ${x===v.cur?'selected':''}>${esc(x)}</option>`).join('')}</select></label>
-   <label class="fld"><span>Amount each time</span><input id="cm-amt" type="number" min="0" step="any" value="${v.amount||''}"></label>
+   <label class="fld"><span>Amount each time</span><input id="cm-amt" type="text" inputmode="decimal" autocomplete="off" data-num min="0" step="any" value="${v.amount||''}"></label>
    <label class="fld"><span>How often</span><select id="cm-freq">${FREQS.map(([k,t])=>`<option value="${k}" ${k===v.freq?'selected':''}>${t}</option>`).join('')}</select></label>
    <label class="fld"><span>First or next date</span><input id="cm-start" type="date" value="${v.start||''}"></label>
    <label class="fld"><span>Ends (optional)</span><input id="cm-end" type="date" value="${v.end||''}"></label>

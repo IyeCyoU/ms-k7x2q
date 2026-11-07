@@ -93,7 +93,61 @@ document.addEventListener('visibilitychange',()=>{
   else if(store.lock()&&!S.locked&&S.autoLock>0&&S.hiddenAt&&Date.now()-S.hiddenAt>S.autoLock*60000)lockNow();
 });
 
+/* ---- keep your place across redraws ----
+   Most edits redraw the page. Without this, the box you were moving to (by Tab or a tap) is destroyed
+   and the cursor is lost, and open sections snap shut. We note where you were heading before the
+   redraw, then put the cursor there and reopen what was open. */
+const FOCUSABLE='input:not([type=hidden]),select,textarea,button,summary,a[href],[tabindex]:not([tabindex="-1"])';
+function placeSig(el){
+  if(!el||el===document.body||!el.isConnected)return null;
+  if(el.id)return{id:el.id};
+  const attrs=[...el.attributes].filter(a=>a.name.startsWith('data-')||a.name==='name'||a.name==='aria-label').map(a=>[a.name,a.value]);
+  const root=el.closest('#view,#controls,#pbar,#modal-body,#modal-actions,#banner,#rail-nav,#tabbar,header')||document.body;
+  const same=[...root.querySelectorAll(el.tagName)].filter(x=>attrs.every(([n,v])=>x.getAttribute(n)===v));
+  return{root:root.id||root.tagName,tag:el.tagName,attrs,n:same.indexOf(el)};
+}
+function findSig(sig){
+  if(!sig)return null;
+  if(sig.id)return document.getElementById(sig.id);
+  const root=document.getElementById(sig.root)||document.querySelector(sig.root)||document.body;
+  const same=[...root.querySelectorAll(sig.tag)].filter(x=>sig.attrs.every(([n,v])=>x.getAttribute(n)===v));
+  return same[sig.n]||null;
+}
+const PLACE={intent:null,at:0};
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Tab')return;
+  const all=[...document.querySelectorAll(FOCUSABLE)].filter(x=>!x.disabled&&x.offsetParent!==null);
+  const i=all.indexOf(document.activeElement);
+  if(i>-1){PLACE.intent=placeSig(all[i+(e.shiftKey?-1:1)]);PLACE.at=Date.now()}
+},true);
+document.addEventListener('pointerdown',e=>{
+  const t=e.target.closest&&(e.target.closest(FOCUSABLE)||e.target.closest('label')?.control);
+  PLACE.intent=t?placeSig(t):null;PLACE.at=Date.now();
+},true);
+// Money boxes are text boxes with a decimal keypad, so "1,500", "1 500" and "1500,5" can be typed.
+// Before any page code reads one, turn what was typed into a plain number ("1500"); leave anything
+// unreadable as typed so the page's own check rejects it.
+const normaliseNum=e=>{const el=e.target;if(!el||!el.matches||!el.matches('input[data-num]'))return;const n=parseAmount(el.value);if(n!==null&&String(n)!==el.value)el.value=String(n)};
+document.addEventListener('change',normaliseNum,true);
+document.addEventListener('focusout',normaliseNum,true);
+document.addEventListener('keydown',e=>{if(e.key==='Enter')normaliseNum(e)},true);
+// A mouse wheel over a focused number box changes its value in most browsers. Never let that edit money.
+document.addEventListener('wheel',e=>{const a=document.activeElement;if(a&&a.type==='number'&&a===e.target)a.blur()},{passive:true});
 function render(){
+  const a=document.activeElement,was=placeSig(a),view=[S.page,S.ptab,S.report].join('|');
+  const open=[...document.querySelectorAll('#view details[open]')].map(placeSig);
+  drawPage();
+  if(view===[S.page,S.ptab,S.report].join('|'))for(const sig of open){const d=findSig(sig);if(d&&d.tagName==='DETAILS')d.open=true}
+  // Focus moves after the change event that caused this redraw, so restore it a moment later.
+  const intent=Date.now()-PLACE.at<1500?PLACE.intent:null;
+  setTimeout(()=>{
+    const cur=document.activeElement;
+    if(cur&&cur!==document.body&&cur.isConnected)return;   // focus already landed somewhere real
+    const el=findSig(intent)||findSig(was);
+    if(el&&el.isConnected&&el.offsetParent!==null){el.focus({preventScroll:true});if(el.select&&el.tagName==='INPUT'&&/^(text|search|number|)$/.test(el.type))try{el.select()}catch(e){}}
+  },0);
+}
+function drawPage(){
   if(S.locked)return;
   const has=!!S.data;
   $('rail-nav').innerHTML=has?navHTML('nav-btn'):'';
