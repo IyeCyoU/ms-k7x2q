@@ -37,12 +37,44 @@ test('works offline and offers a new version', async () => {
     assert.equal(await page.title(), 'Money status');
     await context.setOffline(false);
 
+    // while the app is in use (after the quiet start-up window), an update asks first and Reload applies it
+    await page.waitForTimeout(15500);
     const swPath = path.join(dir, 'sw.js');
     fs.writeFileSync(swPath, fs.readFileSync(swPath, 'utf8').replace(/const V='[^']+'/, "const V='test-next'"));
     await page.evaluate(() => navigator.serviceWorker.getRegistration().then(r => r.update()));
     await page.waitForSelector('.sw-update', { timeout: 10000 });
     await Promise.all([page.waitForNavigation(), page.click('.sw-update button')]);
+    await page.waitForTimeout(500);
     assert.deepEqual(await page.evaluate(() => caches.keys()), ['test-next']);
+    assert.equal(await page.$('.sw-update'), null, 'the message must not come back after Reload');
     assert.deepEqual(app.errors, []);
+  } finally { await app.close(); srv.close(); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+const copySite = () => { const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ms-')); fs.cpSync(ROOT, dir, { recursive: true, filter: s => !/node_modules|\.git$|\.git\//.test(s) }); return dir; };
+const bumpVersion = (dir, v) => { const p = path.join(dir, 'sw.js'); fs.writeFileSync(p, fs.readFileSync(p, 'utf8').replace(/const V='[^']+'/, `const V='${v}'`)); };
+
+test('an update is applied on opening the app, without asking', async () => {
+  const dir = copySite(), srv = await serve(dir), app = await openApp(srv.url);
+  try {
+    await app.page.evaluate(() => navigator.serviceWorker.ready); await app.page.reload(); await app.page.waitForTimeout(300);
+    bumpVersion(dir, 'test-open');
+    const pg2 = await app.context.newPage(); await pg2.goto(srv.url); await pg2.waitForTimeout(4500);   // opening the app again
+    assert.deepEqual(await pg2.evaluate(() => caches.keys()), ['test-open']);
+    assert.equal(await pg2.$('.sw-update'), null, 'no prompt when opening the app');
+  } finally { await app.close(); srv.close(); fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('Reload still reloads when the phone never announces the switch, and does not loop', async () => {
+  const dir = copySite(), srv = await serve(dir), app = await openApp(srv.url), { page } = app;
+  try {
+    await page.evaluate(() => navigator.serviceWorker.ready); await page.reload(); await page.waitForTimeout(15500);
+    bumpVersion(dir, 'test-stuck');
+    await page.evaluate(() => navigator.serviceWorker.getRegistration().then(r => r.update()));
+    await page.waitForSelector('.sw-update', { timeout: 10000 });
+    await page.evaluate(() => { ServiceWorker.prototype.postMessage = function () {}; });   // the switch never happens
+    await Promise.all([page.waitForNavigation({ timeout: 6000 }), page.click('.sw-update button')]);
+    await page.waitForTimeout(1500);
+    assert.notEqual(await page.$('.sw-update'), null, 'offered once more instead of reloading in a loop');
   } finally { await app.close(); srv.close(); fs.rmSync(dir, { recursive: true, force: true }); }
 });
